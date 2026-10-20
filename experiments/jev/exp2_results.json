@@ -1,0 +1,65 @@
+[
+  {
+    "case": "A: tid=5 → tid=23",
+    "truth": "same",
+    "noul_same_person": 0.64,
+    "role_choice": "yes_same_role",
+    "role_conf": 0.52
+  },
+  {
+    "case": "A: tid=23 → tid=43",
+    "truth": "same",
+    "noul_same_person": 0.36,
+    "role_choice": "no_different_roles",
+    "role_conf": 0.2
+  },
+  {
+    "case": "A: tid=5 → tid=43 (big gap)",
+    "truth": "same",
+    "noul_same_person": 0.4,
+    "role_choice": "yes_same_role",
+    "role_conf": 0.06
+  },
+  {
+    "case": "A: tid=5 → tid=0 (climber vs close passerby)",
+    "truth": "different",
+    "noul_same_person": 0.21,
+    "role_choice": "no_different_roles",
+    "role_conf": 0.92
+  },
+  {
+    "case": "A: tid=5 → tid=1 (climber vs big-bbox)",
+    "truth": "different",
+    "noul_same_person": 0.14,
+    "role_choice": "no_different_roles",
+    "role_conf": 0.92
+  },
+  {
+    "case": "B: tid=10 → tid=53",
+    "truth": "same",
+    "noul_same_person": 0.7,
+    "role_choice": "yes_same_role",
+    "role_conf": 0.78
+  },
+  {
+    "case": "B: tid=53 → tid=63",
+    "truth": "same",
+    "noul_same_person": 0.47,
+    "role_choice": "yes_same_role",
+    "role_conf": 0.16
+  },
+  {
+    "case": "B: tid=10 → tid=70 (climber vs belayer)",
+    "truth": "different",
+    "noul_same_person": 0.29,
+    "role_choice": "no_different_roles",
+    "role_conf": 0.54
+  },
+  {
+    "case": "B: tid=10 → tid=2 (climber vs climber-start-or-belayer)",
+    "truth": "ambiguous",
+    "noul_same_person": 0.12,
+    "role_choice": "no_different_roles",
+    "role_conf": 0.94
+  }
+]

@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+.ruff_cache/
+.cache/
+.coverage
+build/
+dist/
+
+# Model weights (auto-downloaded by ultralytics)
+*.pt
+
+# Video / data / outputs (private)
+videos/
+out_*/
+report/
+hold_detect_diag/
+*.mp4
+*.zip
+*.npz
+
+# Legacy / abandoned pipeline — not part of climbsync
+src/climbing_compare/
+src/climbing_compare.egg-info/
+tests/
+
+# Old helper scripts for the legacy pipeline. Only verify_bytetrack.py
+# belongs to climbsync.
+scripts/*
+!scripts/verify_bytetrack.py
+
+# OS / editor junk
+.DS_Store
+.idea/
+.vscode/
+*.swp

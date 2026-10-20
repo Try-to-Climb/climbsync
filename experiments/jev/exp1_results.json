@@ -1,0 +1,338 @@
+[
+  {
+    "video": "VID_20261003_200654",
+    "track_id": 43,
+    "truth": "climber",
+    "heuristic": "climber",
+    "jev_choice": "climber",
+    "jev_confidence": 0.63,
+    "jev_probabilities": {
+      "climber": 0.72,
+      "belayer_or_bystander": 0.27,
+      "passerby_close": 0.01,
+      "noise": 0.0
+    }
+  },
+  {
+    "video": "VID_20261003_200654",
+    "track_id": 5,
+    "truth": "climber",
+    "heuristic": "climber",
+    "jev_choice": "climber",
+    "jev_confidence": 1.0,
+    "jev_probabilities": {
+      "climber": 1.0,
+      "belayer_or_bystander": 0.0,
+      "passerby_close": 0.0,
+      "noise": 0.0
+    }
+  },
+  {
+    "video": "VID_20261003_200654",
+    "track_id": 0,
+    "truth": "passerby_close",
+    "heuristic": "passerby_close",
+    "jev_choice": "passerby_close",
+    "jev_confidence": 0.65,
+    "jev_probabilities": {
+      "climber": 0.09,
+      "belayer_or_bystander": 0.16,
+      "passerby_close": 0.74,
+      "noise": 0.01
+    }
+  },
+  {
+    "video": "VID_20261003_200654",
+    "track_id": 23,
+    "truth": "climber",
+    "heuristic": "climber",
+    "jev_choice": "climber",
+    "jev_confidence": 0.95,
+    "jev_probabilities": {
+      "climber": 0.96,
+      "belayer_or_bystander": 0.04,
+      "passerby_close": 0.0,
+      "noise": 0.0
+    }
+  },
+  {
+    "video": "VID_20261003_200654",
+    "track_id": 1,
+    "truth": "passerby_close",
+    "heuristic": "passerby_close",
+    "jev_choice": "passerby_close",
+    "jev_confidence": 0.35,
+    "jev_probabilities": {
+      "climber": 0.3,
+      "belayer_or_bystander": 0.18,
+      "passerby_close": 0.51,
+      "noise": 0.01
+    }
+  },
+  {
+    "video": "VID_20261003_200654",
+    "track_id": 2,
+    "truth": "passerby_or_noise",
+    "heuristic": "belayer_or_bystander",
+    "jev_choice": "belayer_or_bystander",
+    "jev_confidence": 0.97,
+    "jev_probabilities": {
+      "climber": 0.01,
+      "belayer_or_bystander": 0.98,
+      "passerby_close": 0.01,
+      "noise": 0.0
+    }
+  },
+  {
+    "video": "VID_20261003_200654",
+    "track_id": 30,
+    "truth": "noise",
+    "heuristic": "belayer_or_bystander",
+    "jev_choice": "climber",
+    "jev_confidence": 0.55,
+    "jev_probabilities": {
+      "climber": 0.66,
+      "belayer_or_bystander": 0.2,
+      "passerby_close": 0.01,
+      "noise": 0.13
+    }
+  },
+  {
+    "video": "VID_20261003_200654",
+    "track_id": 46,
+    "truth": "passerby_close",
+    "heuristic": "passerby_close",
+    "jev_choice": "passerby_close",
+    "jev_confidence": 0.88,
+    "jev_probabilities": {
+      "climber": 0.0,
+      "belayer_or_bystander": 0.01,
+      "passerby_close": 0.91,
+      "noise": 0.08
+    }
+  },
+  {
+    "video": "VID_20261003_200654",
+    "track_id": 28,
+    "truth": "passerby_close",
+    "heuristic": "passerby_close",
+    "jev_choice": "passerby_close",
+    "jev_confidence": 0.43,
+    "jev_probabilities": {
+      "climber": 0.01,
+      "belayer_or_bystander": 0.06,
+      "passerby_close": 0.5700000000000001,
+      "noise": 0.36
+    }
+  },
+  {
+    "video": "VID_20261003_200654",
+    "track_id": 41,
+    "truth": "passerby_close",
+    "heuristic": "passerby_close",
+    "jev_choice": "passerby_close",
+    "jev_confidence": 0.89,
+    "jev_probabilities": {
+      "climber": 0.01,
+      "belayer_or_bystander": 0.05,
+      "passerby_close": 0.92,
+      "noise": 0.02
+    }
+  },
+  {
+    "video": "VID_20261003_203017",
+    "track_id": 0,
+    "truth": "noise",
+    "heuristic": "noise",
+    "jev_choice": "climber",
+    "jev_confidence": 0.31,
+    "jev_probabilities": {
+      "climber": 0.48,
+      "belayer_or_bystander": 0.18,
+      "passerby_close": 0.01,
+      "noise": 0.33
+    }
+  },
+  {
+    "video": "VID_20261003_203017",
+    "track_id": 63,
+    "truth": "climber",
+    "heuristic": "climber",
+    "jev_choice": "climber",
+    "jev_confidence": 0.77,
+    "jev_probabilities": {
+      "climber": 0.83,
+      "belayer_or_bystander": 0.16,
+      "passerby_close": 0.01,
+      "noise": 0.0
+    }
+  },
+  {
+    "video": "VID_20261003_203017",
+    "track_id": 10,
+    "truth": "climber",
+    "heuristic": "climber",
+    "jev_choice": "climber",
+    "jev_confidence": 1.0,
+    "jev_probabilities": {
+      "climber": 1.0,
+      "belayer_or_bystander": 0.0,
+      "passerby_close": 0.0,
+      "noise": 0.0
+    }
+  },
+  {
+    "video": "VID_20261003_203017",
+    "track_id": 53,
+    "truth": "climber",
+    "heuristic": "climber",
+    "jev_choice": "climber",
+    "jev_confidence": 0.99,
+    "jev_probabilities": {
+      "climber": 0.99,
+      "belayer_or_bystander": 0.01,
+      "passerby_close": 0.0,
+      "noise": 0.0
+    }
+  },
+  {
+    "video": "VID_20261003_203017",
+    "track_id": 2,
+    "truth": "climber_start_or_belayer",
+    "heuristic": "climber",
+    "jev_choice": "belayer_or_bystander",
+    "jev_confidence": 0.47,
+    "jev_probabilities": {
+      "climber": 0.4,
+      "belayer_or_bystander": 0.6,
+      "passerby_close": 0.0,
+      "noise": 0.0
+    }
+  },
+  {
+    "video": "VID_20261003_203017",
+    "track_id": 70,
+    "truth": "belayer_or_bystander",
+    "heuristic": "belayer_or_bystander",
+    "jev_choice": "belayer_or_bystander",
+    "jev_confidence": 0.91,
+    "jev_probabilities": {
+      "climber": 0.07,
+      "belayer_or_bystander": 0.93,
+      "passerby_close": 0.0,
+      "noise": 0.0
+    }
+  },
+  {
+    "video": "VID_20261003_203017",
+    "track_id": 36,
+    "truth": "noise",
+    "heuristic": "noise",
+    "jev_choice": "belayer_or_bystander",
+    "jev_confidence": 0.77,
+    "jev_probabilities": {
+      "climber": 0.02,
+      "belayer_or_bystander": 0.83,
+      "passerby_close": 0.01,
+      "noise": 0.14
+    }
+  },
+  {
+    "video": "VID_20261003_203017",
+    "track_id": 73,
+    "truth": "noise",
+    "heuristic": "noise",
+    "jev_choice": "noise",
+    "jev_confidence": 0.33,
+    "jev_probabilities": {
+      "climber": 0.03,
+      "belayer_or_bystander": 0.46,
+      "passerby_close": 0.01,
+      "noise": 0.5
+    }
+  },
+  {
+    "video": "VID_20261003_203017",
+    "track_id": 3,
+    "truth": "noise",
+    "heuristic": "noise",
+    "jev_choice": "belayer_or_bystander",
+    "jev_confidence": 0.48,
+    "jev_probabilities": {
+      "climber": 0.01,
+      "belayer_or_bystander": 0.61,
+      "passerby_close": 0.01,
+      "noise": 0.37
+    }
+  },
+  {
+    "video": "VID_20261003_203017",
+    "track_id": 50,
+    "truth": "noise",
+    "heuristic": "noise",
+    "jev_choice": "belayer_or_bystander",
+    "jev_confidence": 0.57,
+    "jev_probabilities": {
+      "climber": 0.0,
+      "belayer_or_bystander": 0.68,
+      "passerby_close": 0.01,
+      "noise": 0.31
+    }
+  },
+  {
+    "video": "VID_20261003_203017",
+    "track_id": 5,
+    "truth": "noise",
+    "heuristic": "noise",
+    "jev_choice": "noise",
+    "jev_confidence": 0.68,
+    "jev_probabilities": {
+      "climber": 0.0,
+      "belayer_or_bystander": 0.24,
+      "passerby_close": 0.0,
+      "noise": 0.76
+    }
+  },
+  {
+    "video": "VID_20261003_203017",
+    "track_id": 7,
+    "truth": "noise",
+    "heuristic": "noise",
+    "jev_choice": "noise",
+    "jev_confidence": 0.71,
+    "jev_probabilities": {
+      "climber": 0.0,
+      "belayer_or_bystander": 0.22,
+      "passerby_close": 0.0,
+      "noise": 0.78
+    }
+  },
+  {
+    "video": "VID_20261003_203017",
+    "track_id": 14,
+    "truth": "noise",
+    "heuristic": "noise",
+    "jev_choice": "noise",
+    "jev_confidence": 0.56,
+    "jev_probabilities": {
+      "climber": 0.0,
+      "belayer_or_bystander": 0.32,
+      "passerby_close": 0.01,
+      "noise": 0.67
+    }
+  },
+  {
+    "video": "VID_20261003_203017",
+    "track_id": 20,
+    "truth": "noise",
+    "heuristic": "noise",
+    "jev_choice": "noise",
+    "jev_confidence": 0.53,
+    "jev_probabilities": {
+      "climber": 0.0,
+      "belayer_or_bystander": 0.35,
+      "passerby_close": 0.0,
+      "noise": 0.65
+    }
+  }
+]
