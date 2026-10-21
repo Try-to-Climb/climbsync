@@ -32,14 +32,25 @@ The first run will auto-download the YOLOv8 pose model into the working director
 
 ## Usage
 
+Minimum:
+
 ```bash
-climbsync A.mp4 B.mp4 -o ./out/ \
-    --pose-model yolov8m-pose.pt \
-    --sample-fps 3 \
-    --out-fps 30 \
-    --pre-pad 3 \
-    --post-pad 5 \
-    --min-wait-gap 3
+climbsync A.mp4 B.mp4
+```
+
+That's it. Output lands in `./out/`. Good defaults are baked in:
+- pose model: `yolov8m-pose.pt` (auto-downloaded on first run)
+- sample fps: 3
+- climb-window padding: 3s before, 5s after
+- min-wait-gap: 3s (coalesces micro-waits into one wait per 3s block)
+
+Common overrides:
+
+```bash
+climbsync A.mp4 B.mp4 -o my_out/ --skeleton      # draw pose skeletons for debug
+climbsync A.mp4 B.mp4 --device cuda              # GPU inference
+climbsync A.mp4 B.mp4 --mode both                # also produce overlay.mp4
+climbsync A.mp4 B.mp4 --diag-lines --diag-progress  # overlay anchor lines + pA/pB
 ```
 
 Produces:
