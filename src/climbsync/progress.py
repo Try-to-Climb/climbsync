@@ -24,6 +24,8 @@ from scipy.signal import savgol_filter
 # COCO indices
 L_HIP, R_HIP = 11, 12
 L_ANKLE, R_ANKLE = 15, 16
+L_WRIST, R_WRIST = 9, 10
+L_SHOULDER, R_SHOULDER = 5, 6
 
 
 def _ffill_bfill(x: np.ndarray) -> np.ndarray:
@@ -121,6 +123,94 @@ def anchor_xy(
             cx = 0.5 * (bbox[i, 0] + bbox[i, 2])
             out[i] = [cx, bbox[i, 3]]
     return out
+
+
+def anchor_hand_xy(
+    kpts: np.ndarray,
+    bbox: np.ndarray,
+    conf_thresh: float = 0.3,
+) -> np.ndarray:
+    """Return per-sample (x, y) of the HIGHEST wrist (= smallest y = top-reaching hand).
+
+    This complements `anchor_xy` (lower foot). Together they capture the full
+    body-extension state of the climber. Fallbacks: upper wrist → shoulder → bbox top.
+
+    Sanity: wrist y must be <= hip y (wrist above hip on screen). If YOLO
+    outputs an inverted pose, reject and fall through.
+    """
+    K = len(kpts)
+    out = np.full((K, 2), np.nan, np.float64)
+    for i in range(K):
+        lw_x, lw_y, lw_c = kpts[i, L_WRIST, 0], kpts[i, L_WRIST, 1], kpts[i, L_WRIST, 2]
+        rw_x, rw_y, rw_c = kpts[i, R_WRIST, 0], kpts[i, R_WRIST, 1], kpts[i, R_WRIST, 2]
+        lh_y, lh_c = kpts[i, L_HIP, 1], kpts[i, L_HIP, 2]
+        rh_y, rh_c = kpts[i, R_HIP, 1], kpts[i, R_HIP, 2]
+
+        hip_ys = []
+        if np.isfinite(lh_y) and lh_c >= conf_thresh:
+            hip_ys.append(lh_y)
+        if np.isfinite(rh_y) and rh_c >= conf_thresh:
+            hip_ys.append(rh_y)
+        hip_ref_y = min(hip_ys) if hip_ys else None  # highest hip = smallest y
+
+        def wrist_ok(wy, wc):
+            if not (np.isfinite(wy) and wc >= conf_thresh):
+                return False
+            if hip_ref_y is not None and wy > hip_ref_y + 20:
+                return False  # wrist below hip = inverted pose, reject
+            return True
+
+        lw_ok = wrist_ok(lw_y, lw_c)
+        rw_ok = wrist_ok(rw_y, rw_c)
+        if lw_ok and rw_ok:
+            if lw_y <= rw_y:
+                out[i] = [lw_x, lw_y]
+            else:
+                out[i] = [rw_x, rw_y]
+            continue
+        if lw_ok:
+            out[i] = [lw_x, lw_y]
+            continue
+        if rw_ok:
+            out[i] = [rw_x, rw_y]
+            continue
+        # Fallback: shoulder
+        ls_x, ls_y, ls_c = kpts[i, L_SHOULDER, 0], kpts[i, L_SHOULDER, 1], kpts[i, L_SHOULDER, 2]
+        rs_x, rs_y, rs_c = kpts[i, R_SHOULDER, 0], kpts[i, R_SHOULDER, 1], kpts[i, R_SHOULDER, 2]
+        sh_pts = []
+        if np.isfinite(ls_y) and ls_c >= conf_thresh:
+            sh_pts.append((ls_x, ls_y))
+        if np.isfinite(rs_y) and rs_c >= conf_thresh:
+            sh_pts.append((rs_x, rs_y))
+        if sh_pts:
+            out[i] = [float(np.mean([p[0] for p in sh_pts])),
+                      float(np.mean([p[1] for p in sh_pts]))]
+            continue
+        if np.isfinite(bbox[i, 1]):
+            cx = 0.5 * (bbox[i, 0] + bbox[i, 2])
+            out[i] = [cx, bbox[i, 1]]
+    return out
+
+
+def combine_progress(
+    p_foot: np.ndarray,
+    p_hand: np.ndarray,
+    hand_lead: float = 0.3,
+) -> np.ndarray:
+    """Scheme-2 combine: progress = foot + hand_lead * max(0, hand - foot).
+
+    The lower foot is the physical ground truth of climber position, but when
+    the hand reaches up for the next hold, the climber is "in progress" even
+    though the foot has not moved yet. We allow hand-superiority to pull the
+    progress forward by a fraction (`hand_lead`), smoothing the plateau when
+    hand moves first and foot follows.
+
+    hand_lead ∈ [0, 1]:  0.0 = foot-only;  0.3 = moderate (default);  1.0 = aggressive.
+    """
+    if len(p_foot) != len(p_hand):
+        raise ValueError("p_foot and p_hand must have same length")
+    forward = np.maximum(0.0, p_hand - p_foot)
+    return np.clip(p_foot + hand_lead * forward, 0.0, 1.0)
 
 
 def warp_points_b_to_a(xy_b: np.ndarray, H: np.ndarray) -> np.ndarray:

@@ -13,7 +13,9 @@ from .align import dtw_align, path_to_frame_schedule, smooth_schedule
 from .detect import run_pose
 from .homography import diagnostic_plot, estimate_homography
 from .progress import (
+    anchor_hand_xy,
     anchor_xy,
+    combine_progress,
     progress_curves_shared,
     trim_climb_window,
     warp_points_b_to_a,
@@ -24,7 +26,8 @@ app = typer.Typer(add_completion=False, help="Sync two climbing videos of the sa
 
 
 def _plot_curves(p_a_full, p_b_full, anchor_a, anchor_b, t_a, t_b,
-                 ka0, ka1, kb0, kb1, path, out_path):
+                 ka0, ka1, kb0, kb1, path, out_path,
+                 p_foot_a=None, p_foot_b=None, p_hand_a=None, p_hand_b=None):
     import matplotlib.pyplot as plt
     fig, axes = plt.subplots(3, 1, figsize=(11, 9))
     # Row 0: raw anchor y vs time (lower = higher on screen → inverted axis)
@@ -34,14 +37,20 @@ def _plot_curves(p_a_full, p_b_full, anchor_a, anchor_b, t_a, t_b,
     axes[0].set_ylabel("anchor y (px, lower = higher)")
     axes[0].set_xlabel("time (s)")
     axes[0].legend(); axes[0].set_title("Raw anchor signal (per video time)")
-    # Row 1: progress curves + climb window shading
-    axes[1].plot(t_a, p_a_full, color="green", label="A")
-    axes[1].plot(t_b, p_b_full, color="magenta", label="B")
+    # Row 1: progress curves + climb window shading. Overlay foot/hand sub-signals.
+    if p_foot_a is not None:
+        axes[1].plot(t_a, p_foot_a, color="green", alpha=0.3, lw=0.8, ls=":", label="A foot")
+        axes[1].plot(t_b, p_foot_b, color="magenta", alpha=0.3, lw=0.8, ls=":", label="B foot")
+    if p_hand_a is not None:
+        axes[1].plot(t_a, p_hand_a, color="darkgreen", alpha=0.3, lw=0.8, ls="--", label="A hand")
+        axes[1].plot(t_b, p_hand_b, color="darkmagenta", alpha=0.3, lw=0.8, ls="--", label="B hand")
+    axes[1].plot(t_a, p_a_full, color="green", lw=1.8, label="A combined")
+    axes[1].plot(t_b, p_b_full, color="magenta", lw=1.8, label="B combined")
     axes[1].axvspan(t_a[ka0], t_a[ka1], color="green", alpha=0.1, label="A climb window")
     axes[1].axvspan(t_b[kb0], t_b[kb1], color="magenta", alpha=0.1, label="B climb window")
     axes[1].set_ylabel("progress")
     axes[1].set_xlabel("time (s)")
-    axes[1].legend(); axes[1].set_title("Progress curves + detected climb windows")
+    axes[1].legend(fontsize=8, ncol=2); axes[1].set_title("Progress curves + detected climb windows")
     # Row 2: DTW path on cropped segments
     pa_idx = [i for i, _ in path]
     pb_idx = [j for _, j in path]
@@ -90,6 +99,9 @@ def sync(
                                     help="Seconds to pad AFTER detected climb end (both videos)."),
     min_wait_gap: float = typer.Option(3.0, "--min-wait-gap",
                                         help="Minimum seconds between wait events (0 = no smoothing)."),
+    hand_lead: float = typer.Option(0.3, "--hand-lead",
+                                     help="How much hand-reaching-up pulls progress forward "
+                                          "(0 = foot-only, 1 = full hand drives). Default 0.3."),
     dump_raw: bool = typer.Option(False, "--dump-raw",
                                    help="Dump raw YOLO + ByteTrack detections to out_dir/raw/. Forces pose re-run."),
     diag_lines: bool = typer.Option(False, "--diag-lines",
@@ -131,13 +143,25 @@ def sync(
     typer.echo("[3/5] Progress curves")
     axy_a = anchor_xy(track_a.kpts, track_a.bbox)
     axy_b = anchor_xy(track_b.kpts, track_b.bbox)
+    hxy_a = anchor_hand_xy(track_a.kpts, track_a.bbox)
+    hxy_b = anchor_hand_xy(track_b.kpts, track_b.bbox)
     if H is not None:
         axy_b_in_a = warp_points_b_to_a(axy_b, H)
-        p_a, p_b = progress_curves_shared(axy_a[:, 1], axy_b_in_a[:, 1], track_a.height)
+        hxy_b_in_a = warp_points_b_to_a(hxy_b, H)
+        p_foot_a, p_foot_b = progress_curves_shared(axy_a[:, 1], axy_b_in_a[:, 1], track_a.height)
+        # Hand curves use the SAME lo/hi as foot (A frame's foot min/max) so they
+        # live on the same normalized scale and can be combined additively.
+        p_hand_a, p_hand_b = progress_curves_shared(hxy_a[:, 1], hxy_b_in_a[:, 1], track_a.height)
     else:
-        # fallback: per-video (previous behavior)
-        p_a, _ = progress_curves_shared(axy_a[:, 1], axy_a[:, 1], track_a.height)
-        p_b, _ = progress_curves_shared(axy_b[:, 1], axy_b[:, 1], track_b.height)
+        p_foot_a, _ = progress_curves_shared(axy_a[:, 1], axy_a[:, 1], track_a.height)
+        p_foot_b, _ = progress_curves_shared(axy_b[:, 1], axy_b[:, 1], track_b.height)
+        p_hand_a, _ = progress_curves_shared(hxy_a[:, 1], hxy_a[:, 1], track_a.height)
+        p_hand_b, _ = progress_curves_shared(hxy_b[:, 1], hxy_b[:, 1], track_b.height)
+
+    # Scheme-2 combine: progress = foot + hand_lead * max(0, hand - foot)
+    p_a = combine_progress(p_foot_a, p_hand_a, hand_lead=hand_lead)
+    p_b = combine_progress(p_foot_b, p_hand_b, hand_lead=hand_lead)
+    typer.echo(f"      hand_lead={hand_lead} → combined p_a/p_b from (p_foot, p_hand)")
 
     ka0, ka1 = trim_climb_window(p_a)
     kb0, kb1 = trim_climb_window(p_b)
@@ -176,7 +200,9 @@ def sync(
                  axy_a[:, 1],
                  (warp_points_b_to_a(axy_b, H)[:, 1] if H is not None else axy_b[:, 1]),
                  track_a.t, track_b.t,
-                 ka0, ka1, kb0, kb1, path, out_dir / "progress_curves.png")
+                 ka0, ka1, kb0, kb1, path, out_dir / "progress_curves.png",
+                 p_foot_a=p_foot_a, p_foot_b=p_foot_b,
+                 p_hand_a=p_hand_a, p_hand_b=p_hand_b)
 
     # 5. Schedule → render
     typer.echo("[5/5] Rendering")
