@@ -233,26 +233,42 @@ def progress_curves_shared(
     smooth_window: int = 15,
     median_window: int = 7,
     hampel_window: int = 15,
+    baseline: str = "a",
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Normalize both using the SAME lo/hi derived from A's valid range only.
+    """Normalize both curves using a shared reference.
 
-    This is the core trick: A's lo (feet-at-start) and A's hi (feet-at-top) define
-    the physical anchors on the route (via A's camera). B's warped y values are
-    normalized against those same anchors, so p_A = p_B iff both are on the same
-    physical row of holds.
+    baseline:
+        "a"     — use A's p1/p99 of the (cleaned) up signal (legacy behaviour).
+        "b"     — use B's p1/p99 (useful if B climbed higher than A).
+        "union" — use min(lo_a, lo_b) and max(hi_a, hi_b).
+
+    Both signals are expressed as `up = frame_height - y`, so larger = higher
+    on the wall. The normalization lives on the SAME physical scale (A camera
+    frame, because B has already been warped through H).
     """
     ya = _clean(anchor_y_a, hampel_window, median_window, smooth_window)
     yb = _clean(anchor_y_b_in_a, hampel_window, median_window, smooth_window)
     up_a = frame_height - ya
     up_b = frame_height - yb
-    lo = np.percentile(up_a, 1.0)
-    hi = np.percentile(up_a, 99.0)
+
+    lo_a = float(np.percentile(up_a, 1.0))
+    hi_a = float(np.percentile(up_a, 99.0))
+    lo_b = float(np.percentile(up_b, 1.0))
+    hi_b = float(np.percentile(up_b, 99.0))
+
+    if baseline == "a":
+        lo, hi = lo_a, hi_a
+    elif baseline == "b":
+        lo, hi = lo_b, hi_b
+    elif baseline == "union":
+        lo, hi = min(lo_a, lo_b), max(hi_a, hi_b)
+    else:
+        raise ValueError(f"Unknown baseline: {baseline!r}")
+
     if hi - lo < 1e-3:
         return np.zeros_like(up_a), np.zeros_like(up_b)
     pa = np.clip((up_a - lo) / (hi - lo), 0.0, 1.0)
-    # NOTE: don't clip B — we want "B above A's top" or "B below A's bottom" to be visible
-    pb = (up_b - lo) / (hi - lo)
-    pb = np.clip(pb, 0.0, 1.0)
+    pb = np.clip((up_b - lo) / (hi - lo), 0.0, 1.0)
     return pa, pb
 
 
@@ -318,15 +334,20 @@ def trim_climb_window(
     p: np.ndarray,
     rise_above_baseline: float = 0.1,
     end_thresh: float = 0.97,
+    end_frac_of_peak: float = 0.95,
     baseline_samples: int = 15,
     min_hold_samples: int = 8,
 ) -> tuple[int, int]:
     """Detect climb window relative to each curve's own baseline.
 
-    - baseline = median of the first `baseline_samples` samples (= standing-still progress).
+    - baseline = median of the first `baseline_samples` samples (= standing-still).
     - k_start: first index where p stays >= baseline + rise_above_baseline for
       min_hold_samples consecutive samples.
-    - k_end: first index where p >= end_thresh after k_start.
+    - k_end: first index where p >= effective_end AFTER k_start.
+      effective_end = min(end_thresh, end_frac_of_peak * max(p[k0:])).
+      This way a climber that only reached, say, p=0.9 (because the other
+      climber went higher and set the normalization) still has a well-defined
+      end: 95% of its OWN peak.
     """
     K = len(p)
     if K == 0:
@@ -339,7 +360,44 @@ def trim_climb_window(
         if np.all(p[i:i + min_hold_samples] >= start_level):
             k0 = i
             break
-    tail = np.where(p[k0:] >= end_thresh)[0]
+    peak = float(np.max(p[k0:])) if k0 < K else 0.0
+    effective_end = min(end_thresh, end_frac_of_peak * peak)
+    tail = np.where(p[k0:] >= effective_end)[0]
     k1 = int(k0 + tail[0]) if len(tail) else K - 1
     k1 = max(k1, k0 + 1)
     return k0, k1
+
+
+def detect_completion(
+    p: np.ndarray,
+    k_end: int,
+    sample_fps: float,
+    hold_seconds: float = 3.0,
+    fall_drop: float = 0.3,
+) -> dict:
+    """Heuristic: did the climber complete or fall?
+
+    After `k_end` (= where the climb window ends, at the climber's peak), look
+    at the next `hold_seconds` of signal. If p stays within `fall_drop` of the
+    peak, the climber held the top → completed. If p drops below peak - fall_drop,
+    the climber fell (or was lowered quickly, which from a sync perspective
+    looks the same).
+
+    Returns dict with:
+        completed:   True/False
+        peak_p:      the max p reached
+        tail_min_p:  the lowest p within hold_seconds after peak
+        hold_time:   actual seconds observed (may be < hold_seconds at EOF)
+    """
+    if k_end >= len(p) - 1:
+        return {"completed": True, "peak_p": float(p[k_end]), "tail_min_p": None,
+                "hold_time": 0.0, "reason": "no post-peak data"}
+    hold_samples = max(1, int(round(hold_seconds * sample_fps)))
+    end = min(len(p), k_end + hold_samples)
+    peak_p = float(np.max(p[max(0, k_end - 2):k_end + 2]))
+    tail_min = float(np.min(p[k_end:end]))
+    actual_hold = (end - k_end) / sample_fps
+    completed = (peak_p - tail_min) < fall_drop
+    return {"completed": completed, "peak_p": peak_p, "tail_min_p": tail_min,
+            "hold_time": actual_hold,
+            "reason": "stayed near peak" if completed else "fell/lowered past threshold"}

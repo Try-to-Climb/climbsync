@@ -16,6 +16,7 @@ from .progress import (
     anchor_hand_xy,
     anchor_xy,
     combine_progress,
+    detect_completion,
     progress_curves_shared,
     trim_climb_window,
     warp_points_b_to_a,
@@ -102,6 +103,10 @@ def sync(
     hand_lead: float = typer.Option(0.3, "--hand-lead",
                                      help="How much hand-reaching-up pulls progress forward "
                                           "(0 = foot-only, 1 = full hand drives). Default 0.3."),
+    baseline: str = typer.Option("longer", "--baseline",
+                                  help="Reference used to normalize both climbers' progress: "
+                                       "'a' | 'b' | 'longer' (auto-pick who climbed higher) | 'union'. "
+                                       "Matters when one climber fell before reaching the top."),
     dump_raw: bool = typer.Option(False, "--dump-raw",
                                    help="Dump raw YOLO + ByteTrack detections to out_dir/raw/. Forces pose re-run."),
     diag_lines: bool = typer.Option(False, "--diag-lines",
@@ -148,15 +153,33 @@ def sync(
     if H is not None:
         axy_b_in_a = warp_points_b_to_a(axy_b, H)
         hxy_b_in_a = warp_points_b_to_a(hxy_b, H)
-        p_foot_a, p_foot_b = progress_curves_shared(axy_a[:, 1], axy_b_in_a[:, 1], track_a.height)
-        # Hand curves use the SAME lo/hi as foot (A frame's foot min/max) so they
-        # live on the same normalized scale and can be combined additively.
-        p_hand_a, p_hand_b = progress_curves_shared(hxy_a[:, 1], hxy_b_in_a[:, 1], track_a.height)
     else:
-        p_foot_a, _ = progress_curves_shared(axy_a[:, 1], axy_a[:, 1], track_a.height)
-        p_foot_b, _ = progress_curves_shared(axy_b[:, 1], axy_b[:, 1], track_b.height)
-        p_hand_a, _ = progress_curves_shared(hxy_a[:, 1], hxy_a[:, 1], track_a.height)
-        p_hand_b, _ = progress_curves_shared(hxy_b[:, 1], hxy_b[:, 1], track_b.height)
+        axy_b_in_a = axy_b
+        hxy_b_in_a = hxy_b
+
+    # Resolve "longer" baseline: whichever climber reached a higher up value
+    # (i.e. a higher position on the wall in A's camera coordinates).
+    if baseline == "longer":
+        up_a_peak = np.nanmax(track_a.height - axy_a[:, 1])
+        up_b_peak = np.nanmax(track_a.height - axy_b_in_a[:, 1])
+        chosen_baseline = "a" if up_a_peak >= up_b_peak else "b"
+        typer.echo(f"      baseline='longer' → using {chosen_baseline.upper()} "
+                   f"(up_a_peak={up_a_peak:.0f}px vs up_b_peak={up_b_peak:.0f}px)")
+    else:
+        chosen_baseline = baseline
+
+    if H is not None:
+        p_foot_a, p_foot_b = progress_curves_shared(axy_a[:, 1], axy_b_in_a[:, 1],
+                                                     track_a.height, baseline=chosen_baseline)
+        p_hand_a, p_hand_b = progress_curves_shared(hxy_a[:, 1], hxy_b_in_a[:, 1],
+                                                     track_a.height, baseline=chosen_baseline)
+    else:
+        # No H → each video self-normalized (legacy fallback). Baseline param
+        # has no cross-video meaning here.
+        p_foot_a, _ = progress_curves_shared(axy_a[:, 1], axy_a[:, 1], track_a.height, baseline="a")
+        p_foot_b, _ = progress_curves_shared(axy_b[:, 1], axy_b[:, 1], track_b.height, baseline="a")
+        p_hand_a, _ = progress_curves_shared(hxy_a[:, 1], hxy_a[:, 1], track_a.height, baseline="a")
+        p_hand_b, _ = progress_curves_shared(hxy_b[:, 1], hxy_b[:, 1], track_b.height, baseline="a")
 
     # Scheme-2 combine: progress = foot + hand_lead * max(0, hand - foot)
     p_a = combine_progress(p_foot_a, p_hand_a, hand_lead=hand_lead)
@@ -165,6 +188,17 @@ def sync(
 
     ka0, ka1 = trim_climb_window(p_a)
     kb0, kb1 = trim_climb_window(p_b)
+    # Detect whether each climber held the top (= completed) or dropped away
+    # (= fell / was lowered quickly). Uses the raw progress curve BEFORE
+    # pre/post pad and before cummax clipping.
+    comp_a = detect_completion(p_a, ka1, sample_fps=sample_fps)
+    comp_b = detect_completion(p_b, kb1, sample_fps=sample_fps)
+    typer.echo(f"      A completion: {'✓ topped out' if comp_a['completed'] else '✗ fell/dropped'} "
+               f"(peak={comp_a['peak_p']:.2f}, tail_min={comp_a['tail_min_p']}, "
+               f"reason={comp_a['reason']})")
+    typer.echo(f"      B completion: {'✓ topped out' if comp_b['completed'] else '✗ fell/dropped'} "
+               f"(peak={comp_b['peak_p']:.2f}, tail_min={comp_b['tail_min_p']}, "
+               f"reason={comp_b['reason']})")
     # Apply pre-pad (seconds) by stepping back in samples
     if pre_pad > 0:
         dta = 1.0 / sample_fps
@@ -259,6 +293,13 @@ def sync(
         "homography_used": H is not None,
         "trim_a_frames": [int(fa_idx[0]), int(fa_idx[-1])],
         "trim_b_frames": [int(fb_idx[0]), int(fb_idx[-1])],
+        "baseline_option": baseline,
+        "baseline_resolved": chosen_baseline if H is not None else "per-video",
+        "hand_lead": hand_lead,
+        "completion": {
+            "a": comp_a,
+            "b": comp_b,
+        },
     }
     (out_dir / "summary.json").write_text(json.dumps(summary, indent=2))
     typer.echo("Done.")
